@@ -1,0 +1,38 @@
+[
+  {
+    "id": "INV-W01",
+    "name": "New Zealand Wool - Premium",
+    "category": "Wool",
+    "quantity": 1250,
+    "unit": "kg",
+    "status": "Healthy",
+    "lastRestock": "2023-10-15"
+  },
+  {
+    "id": "INV-D12",
+    "name": "Crimson Red Organic Dye",
+    "category": "Dye",
+    "quantity": 25,
+    "unit": "liters",
+    "status": "Low Stock",
+    "lastRestock": "2023-09-01"
+  },
+  {
+    "id": "INV-T04",
+    "name": "Heavy Duty Trimming Shears",
+    "category": "Tools",
+    "quantity": 4,
+    "unit": "units",
+    "status": "Critical",
+    "lastRestock": "2022-11-20"
+  },
+  {
+    "id": "INV-Y07",
+    "name": "Cotton Warp Yarn - Standard",
+    "category": "Yarn",
+    "quantity": 800,
+    "unit": "kg",
+    "status": "Healthy",
+    "lastRestock": "2023-10-22"
+  }
+]

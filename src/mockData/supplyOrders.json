@@ -1,0 +1,31 @@
+[
+  {
+    "id": "PO-9001",
+    "factoryRef": "Rug Factory Main",
+    "material": "New Zealand Wool (Raw)",
+    "quantity": "5000 kg",
+    "dateRequested": "2023-10-20",
+    "status": "Pending Confirmation",
+    "amount": "₹15,200.00"
+  },
+  {
+    "id": "PO-9002",
+    "factoryRef": "Rug Factory Main",
+    "material": "Crimson Red Organic Dye",
+    "quantity": "200 Liters",
+    "dateRequested": "2023-10-18",
+    "status": "Processing",
+    "amount": "₹2,100.00"
+  },
+  {
+    "id": "PO-9003",
+    "factoryRef": "Rug Factory Annex",
+    "material": "Cotton Warp Yarn",
+    "quantity": "1000 kg",
+    "dateRequested": "2023-10-15",
+    "status": "Shipped",
+    "amount": "₹4,500.00",
+    "eta": "2023-10-28",
+    "shippingCarrier": "GlobalFreight"
+  }
+]

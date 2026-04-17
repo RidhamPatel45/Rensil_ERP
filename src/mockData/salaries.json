@@ -1,0 +1,92 @@
+[
+  {
+    "userId": 1,
+    "baseSalary": "₹85,000",
+    "allowance": "₹15,000",
+    "bonuses": "₹0",
+    "deductions": "₹5,000",
+    "netSalary": "₹95,000",
+    "paymentStatus": "Paid",
+    "lastPaymentDate": "2023-10-01",
+    "history": [
+      { "month": "September", "amount": "₹95,000", "status": "Paid" },
+      { "month": "August", "amount": "₹95,000", "status": "Paid" }
+    ]
+  },
+  {
+    "userId": 2,
+    "baseSalary": "₹65,000",
+    "allowance": "₹10,000",
+    "bonuses": "₹8,500",
+    "deductions": "₹3,500",
+    "netSalary": "₹80,000",
+    "paymentStatus": "Paid",
+    "lastPaymentDate": "2023-10-01",
+    "workDetails": {
+      "metric": "Team Efficiency",
+      "value": "94%",
+      "description": "Based on 45 tasks supervised in October."
+    },
+    "history": [
+      { "month": "September", "amount": "₹78,000", "status": "Paid" },
+      { "month": "August", "amount": "₹78,000", "status": "Paid" }
+    ]
+  },
+  {
+    "userId": 3,
+    "baseSalary": "₹35,000",
+    "allowance": "₹5,000",
+    "bonuses": "₹4,200",
+    "deductions": "₹1,200",
+    "netSalary": "₹43,000",
+    "paymentStatus": "Pending",
+    "lastPaymentDate": "2023-09-01",
+    "workDetails": {
+      "metric": "Tasks Completed",
+      "value": "28/30",
+      "description": "28 rugs finished weaving ahead of deadline."
+    },
+    "history": [
+      { "month": "September", "amount": "₹41,000", "status": "Paid" },
+      { "month": "August", "amount": "₹40,500", "status": "Paid" }
+    ]
+  },
+  {
+    "userId": 4,
+    "role": "Inventory Manager",
+    "baseSalary": "₹55,000",
+    "allowance": "₹8,000",
+    "bonuses": "₹3,000",
+    "deductions": "₹2,000",
+    "netSalary": "₹64,000",
+    "paymentStatus": "Paid",
+    "lastPaymentDate": "2023-10-02",
+    "workDetails": {
+      "metric": "Stock Accuracy",
+      "value": "99.2%",
+      "description": "Achieved through weekly audit of Dye and Yarn warehouse."
+    },
+    "history": [
+      { "month": "September", "amount": "₹62,000", "status": "Paid" }
+    ]
+  },
+  {
+    "userId": 5,
+    "role": "Sales Manager",
+    "baseSalary": "₹55,000",
+    "allowance": "₹12,000",
+    "bonuses": "₹15,000",
+    "deductions": "₹2,500",
+    "netSalary": "₹79,500",
+    "paymentStatus": "Pending",
+    "lastPaymentDate": "2023-09-02",
+    "workDetails": {
+      "metric": "Revenue Target",
+      "value": "112%",
+      "description": "Exceeded monthly revenue target by ₹2.4 Lakhs."
+    },
+    "history": [
+      { "month": "September", "amount": "₹75,000", "status": "Paid" }
+    ]
+  }
+]
