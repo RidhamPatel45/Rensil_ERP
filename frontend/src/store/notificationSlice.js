@@ -5,7 +5,7 @@ const initialState = {
     {
       id: 'welcome-01',
       title: 'System Initialized',
-      message: 'Welcome to the Rug Factory System dashboard.',
+      message: 'Welcome to the Rensil-ERP dashboard.',
       timestamp: new Date().toISOString(),
       read: false,
       targetRole: 'Admin' // Default to Admin

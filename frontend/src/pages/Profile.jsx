@@ -90,7 +90,7 @@ const Profile = () => {
                   className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-slate-50 disabled:border-transparent disabled:shadow-none"
                   placeholder="Tell us about yourself..."
                   disabled={!isEditing}
-                  defaultValue="Dedicated employee at Rug Factory. Focused on quality production and system efficiency."
+                  defaultValue="Dedicated employee at Rensil ERP. Focused on quality production and system efficiency."
                 />
              </div>
 

@@ -1,7 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const getAuthHeaders = () => {
-  const savedUser = localStorage.getItem('rug_factory_user');
+  const savedUser = localStorage.getItem('rensil_erp_user');
   if (savedUser) {
     try {
       const user = JSON.parse(savedUser);

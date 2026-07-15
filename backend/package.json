@@ -1,7 +1,7 @@
 {
-  "name": "rug-factory-backend",
+  "name": "rensil-erp-backend",
   "version": "1.0.0",
-  "description": "Rug Factory ERP - Express + SQLite Backend",
+  "description": "Rensil ERP - Express + MongoDB Backend",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -13,10 +13,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "mongoose": "^8.0.0",
     "morgan": "^1.10.0",
-    "rug-factory-system": "file:..",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "rensil-erp": "file:.."
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 export const useTheme = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('rug_factory_theme');
+    const saved = localStorage.getItem('rensil_erp_theme');
     if (saved) return saved === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
@@ -11,10 +11,10 @@ export const useTheme = () => {
     const root = window.document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
-      localStorage.setItem('rug_factory_theme', 'dark');
+      localStorage.setItem('rensil_erp_theme', 'dark');
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('rug_factory_theme', 'light');
+      localStorage.setItem('rensil_erp_theme', 'light');
     }
   }, [isDarkMode]);
 

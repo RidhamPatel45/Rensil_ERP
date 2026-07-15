@@ -1,7 +1,7 @@
 {
-  "name": "rug-factory-frontend",
+  "name": "rensil-erp-frontend",
   "version": "1.0.0",
-  "description": "Rug Factory ERP - React + Vite Frontend",
+  "description": "Rensil ERP - React + Vite Frontend",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,7 +23,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.14.1",
     "recharts": "^3.8.1",
-    "rug-factory-system": "file:..",
+    "rensil-erp": "file:..",
     "tailwind-merge": "^3.5.0",
     "yup": "^1.7.1"
   },

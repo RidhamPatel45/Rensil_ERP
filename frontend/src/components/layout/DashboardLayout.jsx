@@ -47,7 +47,7 @@ const DashboardLayout = () => {
         {/* Logo */}
         <div className={clsx("mb-8 px-4 flex items-center transition-all", isCollapsed && "px-1 justify-center")}>
           <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white shrink-0">R</div>
-          {!isCollapsed && <span className="ml-3 text-xl font-bold text-white tracking-tight truncate">Rug Factory</span>}
+          {!isCollapsed && <span className="ml-3 text-xl font-bold text-white tracking-tight truncate">Rensil-ERP</span>}
         </div>
         
         <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
@@ -188,7 +188,7 @@ const DashboardLayout = () => {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-10 sticky top-0 transition-colors duration-300">
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex-1 truncate">Rug Factory System</h1>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex-1 truncate">Rensil-ERP System</h1>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
             <NotificationPanel />

@@ -52,7 +52,7 @@ const Login = () => {
               <span className="text-[10px] font-black uppercase tracking-[0.3em] font-mono">Verified Portal</span>
            </div>
            <h1 className="text-3xl font-black text-white uppercase tracking-tighter italic">
-              Rug Factory <span className="text-primary-500">System</span>
+              Rensil-ERP <span className="text-primary-500">System</span>
            </h1>
            <p className="text-slate-400 text-sm font-medium mt-1">Authorized Gateway Control</p>
         </div>
@@ -65,7 +65,7 @@ const Login = () => {
               <Input 
                 id="email"
                 type="email" 
-                placeholder="name@rugfactory.com" 
+                placeholder="name@rensil.com" 
                 className="h-12 pl-12 bg-white/5 border-white/10 text-white placeholder:text-slate-600 rounded-2xl focus:ring-primary-500/30 focus:border-primary-500/50 transition-all outline-none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +74,7 @@ const Login = () => {
             </div>
             <div className="flex justify-between items-center px-1">
                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">Enter corporate credentials</p>
-               <span className="text-[9px] text-primary-500 font-black cursor-pointer hover:underline opacity-50">admin@rugfactory.com</span>
+               <span className="text-[9px] text-primary-500 font-black cursor-pointer hover:underline opacity-50">admin@rensil.com</span>
             </div>
           </div>
 

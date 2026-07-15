@@ -118,7 +118,7 @@ const OrderDetail = () => {
                       <p className="text-slate-500 dark:text-slate-400 mt-1 font-mono text-sm">{order.id}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 text-lg">Rug Factory System</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-100 text-lg">Rensil-ERP System</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400 text-right">123 Industrial Way<br/>Weaver City, WC 54321</p>
                     </div>
                 </div>
