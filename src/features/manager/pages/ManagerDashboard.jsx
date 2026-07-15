@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/Card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Briefcase, Clock, CheckCircle, PlusCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import RequestApprovalModal from '../../../components/ui/RequestApprovalModal';
+import { approvalService } from '../../../services/approvalService';
+import { setRequests } from '../../../store/approvalSlice';
 
 const performanceData = [
   { week: 'W1', efficiency: 85 },
@@ -19,6 +21,17 @@ const ManagerDashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const { requests } = useSelector((state) => state.approvals);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    approvalService.getRequests()
+      .then(data => {
+        dispatch(setRequests(data));
+      })
+      .catch(err => {
+        console.error('Failed to load approvals:', err);
+      });
+  }, [dispatch]);
 
   const recentRequests = requests
     .filter(req => req.requestedBy === user?.name)

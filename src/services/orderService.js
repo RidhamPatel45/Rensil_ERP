@@ -1,33 +1,25 @@
-import ordersData from '../mockData/orders.json';
-import { auditService } from './auditService';
-
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Persist orders in memory for the duration of the session
-let memOrders = [...ordersData];
+import { apiFetch } from './apiHelper';
 
 export const orderService = {
   getOrders: async () => {
-    await delay(600);
-    return [...memOrders];
+    return apiFetch('/api/orders');
   },
   
   getOrderById: async (id) => {
-    await delay(400);
-    return memOrders.find(o => o.id === id);
+    return apiFetch(`/api/orders/${id}`);
   },
 
   updatePaymentStatus: async (id, status) => {
-    await delay(300);
-    memOrders = memOrders.map(o => o.id === id ? { ...o, paymentStatus: status } : o);
-    auditService.logAction('Sales', 'Payment Update', `Order ${id} marked as ${status}`);
-    return true;
+    return apiFetch(`/api/orders/${id}/payment`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
   },
 
   addOrder: async (order) => {
-    await delay(400);
-    memOrders = [order, ...memOrders];
-    auditService.logAction('Sales', 'Order Created', `New order ${order.id} for ${order.amount} recorded.`);
-    return true;
+    return apiFetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(order)
+    });
   }
 };

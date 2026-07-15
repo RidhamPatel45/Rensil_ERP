@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 import { addRequest } from '../../store/approvalSlice';
+import { approvalService } from '../../services/approvalService';
 import toast from 'react-hot-toast';
 
 const RequestApprovalModal = ({ isOpen, onClose }) => {
@@ -23,15 +24,21 @@ const RequestApprovalModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    dispatch(addRequest({
+    approvalService.addRequest({
       subject: formData.subject,
       description: formData.description,
       requestedBy: user?.name,
-    }));
-
-    toast.success('Approval request submitted!');
-    setFormData({ subject: '', description: '' });
-    onClose();
+    })
+    .then((newReq) => {
+      dispatch(addRequest(newReq));
+      toast.success('Approval request submitted!');
+      setFormData({ subject: '', description: '' });
+      onClose();
+    })
+    .catch((err) => {
+      toast.error('Failed to submit approval request');
+      console.error(err);
+    });
   };
 
   return (

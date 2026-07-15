@@ -1,11 +1,7 @@
-import productsData from '../mockData/products.json';
-
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+import { apiFetch } from './apiHelper';
 
 export const productService = {
   getProducts: async () => {
-    // Simulate network delay
-    await delay(500);
-    return productsData;
+    return apiFetch('/api/products');
   }
 };

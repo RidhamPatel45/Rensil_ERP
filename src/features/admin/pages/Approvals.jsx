@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/Card';
@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { addNotification } from '../../../store/notificationSlice';
-import { updateRequestStatus } from '../../../store/approvalSlice';
+import { setRequests, updateRequestStatus } from '../../../store/approvalSlice';
+import { approvalService } from '../../../services/approvalService';
 import { PlusCircle, Search } from 'lucide-react';
 import RequestApprovalModal from '../../../components/ui/RequestApprovalModal';
 import { Input } from '../../../components/ui/Input';
@@ -19,28 +20,46 @@ const Approvals = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const dispatch = useDispatch();
 
+  useEffect(() => {
+    approvalService.getRequests()
+      .then(data => {
+        dispatch(setRequests(data));
+      })
+      .catch(err => {
+        toast.error('Failed to load approvals');
+        console.error(err);
+      });
+  }, [dispatch]);
+
   const isAdmin = user?.role === 'Admin';
 
   const handleAction = (id, action) => {
     const newStatus = action === 'Approve' ? 'Approved' : 'Rejected';
     
-    dispatch(updateRequestStatus({ id, status: newStatus }));
+    approvalService.updateRequestStatus(id, newStatus)
+      .then(() => {
+        dispatch(updateRequestStatus({ id, status: newStatus }));
 
-    if (newStatus === 'Approved') {
-      toast.success(`Request ${id} approved successfully.`);
-      dispatch(addNotification({
-        title: 'Request Approved',
-        message: `Admin approved request ${id}.`,
-        targetRole: 'Admin'
-      }));
-    } else {
-      toast.error(`Request ${id} rejected.`);
-      dispatch(addNotification({
-        title: 'Request Rejected',
-        message: `Admin rejected request ${id}.`,
-        targetRole: 'Admin'
-      }));
-    }
+        if (newStatus === 'Approved') {
+          toast.success(`Request ${id} approved successfully.`);
+          dispatch(addNotification({
+            title: 'Request Approved',
+            message: `Admin approved request ${id}.`,
+            targetRole: 'Admin'
+          }));
+        } else {
+          toast.error(`Request ${id} rejected.`);
+          dispatch(addNotification({
+            title: 'Request Rejected',
+            message: `Admin rejected request ${id}.`,
+            targetRole: 'Admin'
+          }));
+        }
+      })
+      .catch(err => {
+        toast.error('Failed to update request status');
+        console.error(err);
+      });
   };
 
   // Logic: Admin sees all, other roles see only their own requests
