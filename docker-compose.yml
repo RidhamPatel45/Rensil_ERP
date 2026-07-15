@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: rensl_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - rensl_mongo_data:/data/db
+    networks:
+      - rensl_network
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rensl_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/rensil_erp
+      - NODE_ENV=development
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - rensl_network
+    restart: always
+
+volumes:
+  rensl_mongo_data:
+
+networks:
+  rensl_network:
+    driver: bridge
