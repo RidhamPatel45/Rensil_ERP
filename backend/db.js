@@ -4,12 +4,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'database.sqlite');
-const mockDataPath = path.join(__dirname, '../src/mockData');
+// Database file path comes from .env → DATABASE_FILE, defaults to ./database.sqlite
+const dbPath = path.resolve(__dirname, process.env.DATABASE_FILE || 'database.sqlite');
+
+// mockData now lives in backend/mockData/
+const mockDataPath = path.join(__dirname, 'mockData');
 
 export async function getDb() {
   return open({
@@ -97,8 +103,8 @@ export async function initDb() {
       netSalary TEXT NOT NULL,
       paymentStatus TEXT NOT NULL,
       lastPaymentDate TEXT NOT NULL,
-      workDetails TEXT, -- JSON string
-      history TEXT -- JSON string
+      workDetails TEXT,
+      history TEXT
     );
 
     CREATE TABLE IF NOT EXISTS tasks (
@@ -132,39 +138,23 @@ export async function initDb() {
     );
   `);
 
-  // Seed Users if empty
+  // Seed Users
   const userCheck = await db.get('SELECT count(*) as count FROM users');
   if (userCheck.count === 0) {
     console.log('Seeding users table...');
     const rawUsers = JSON.parse(fs.readFileSync(path.join(mockDataPath, 'users.json'), 'utf8'));
-    
-    // Add additional users defined in the original frontend service
     const fullUsers = [
       ...rawUsers,
-      {
-        "id": 4,
-        "name": "Sam Inventory",
-        "email": "inventory@rugfactory.com",
-        "role": "Inventory Manager",
-        "status": "Active"
-      },
-      {
-        "id": 5,
-        "name": "Sarah Sales",
-        "email": "sales@rugfactory.com",
-        "role": "Sales Manager",
-        "status": "Active"
-      }
+      { id: 4, name: 'Sam Inventory',  email: 'inventory@rugfactory.com', role: 'Inventory Manager', status: 'Active' },
+      { id: 5, name: 'Sarah Sales',    email: 'sales@rugfactory.com',     role: 'Sales Manager',      status: 'Active' }
     ];
-
     for (const u of fullUsers) {
-      const plainPassword = u.role === 'Admin' ? 'admin123' : 'password123';
-      const hashedPassword = bcrypt.hashSync(plainPassword, 10);
+      const plain = u.role === 'Admin' ? 'admin123' : 'password123';
+      const hashed = bcrypt.hashSync(plain, 10);
       const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`;
-      
       await db.run(
         'INSERT INTO users (id, name, email, role, status, password, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [u.id.toString(), u.name, u.email, u.role, u.status, hashedPassword, avatar]
+        [u.id.toString(), u.name, u.email, u.role, u.status, hashed, avatar]
       );
     }
   }
@@ -242,18 +232,9 @@ export async function initDb() {
     for (const s of salariesList) {
       await db.run(
         'INSERT INTO salaries (userId, baseSalary, allowance, bonuses, deductions, netSalary, paymentStatus, lastPaymentDate, workDetails, history) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [
-          s.userId,
-          s.baseSalary,
-          s.allowance,
-          s.bonuses,
-          s.deductions,
-          s.netSalary,
-          s.paymentStatus,
-          s.lastPaymentDate,
+        [s.userId, s.baseSalary, s.allowance, s.bonuses, s.deductions, s.netSalary, s.paymentStatus, s.lastPaymentDate,
           s.workDetails ? JSON.stringify(s.workDetails) : null,
-          s.history ? JSON.stringify(s.history) : null
-        ]
+          s.history ? JSON.stringify(s.history) : null]
       );
     }
   }
@@ -276,62 +257,13 @@ export async function initDb() {
   if (auditCheck.count === 0) {
     console.log('Seeding audit_logs table...');
     const initialLogs = [
-      {
-        id: 'LOG-006',
-        timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        user: 'Sam Inventory',
-        userRole: 'Inventory Manager',
-        module: 'Inventory',
-        action: 'Stock Replenished',
-        description: 'Added 50 units of Premium Wool (Batch #882).'
-      },
-      {
-        id: 'LOG-005',
-        timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-        user: 'Sarah Sales',
-        userRole: 'Sales Manager',
-        module: 'Sales',
-        action: 'Payment Recorded',
-        description: 'Marked Order ORD-772 as PAID (Amount: ₹12,400).'
-      },
-      {
-        id: 'LOG-004',
-        timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-        user: 'Jane Manager',
-        userRole: 'Manager',
-        module: 'Manager',
-        action: 'Task Assigned',
-        description: 'Assigned "Quality Inspection" for Order #902 to Bill Worker.'
-      },
-      {
-        id: 'LOG-003',
-        timestamp: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
-        user: 'System Admin',
-        userRole: 'Admin',
-        module: 'Admin',
-        action: 'User Updated',
-        description: 'Updated permissions for Worker: Bill Worker.'
-      },
-      {
-        id: 'LOG-002',
-        timestamp: new Date(Date.now() - 1000 * 60 * 600).toISOString(),
-        user: 'Bill Worker',
-        userRole: 'Worker',
-        module: 'Security',
-        action: 'User Login',
-        description: 'Successful login from IP: 192.168.1.42.'
-      },
-      {
-        id: 'LOG-001',
-        timestamp: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
-        user: 'System',
-        userRole: 'System',
-        module: 'Core',
-        action: 'System Boot',
-        description: 'Rug Factory System v2.0 initialized successfully.'
-      }
+      { id: 'LOG-006', timestamp: new Date(Date.now() - 1000*60*15).toISOString(),  user: 'Sam Inventory', userRole: 'Inventory Manager', module: 'Inventory', action: 'Stock Replenished', description: 'Added 50 units of Premium Wool (Batch #882).' },
+      { id: 'LOG-005', timestamp: new Date(Date.now() - 1000*60*45).toISOString(),  user: 'Sarah Sales',   userRole: 'Sales Manager',      module: 'Sales',     action: 'Payment Recorded',  description: 'Marked Order ORD-772 as PAID (Amount: ₹12,400).' },
+      { id: 'LOG-004', timestamp: new Date(Date.now() - 1000*60*120).toISOString(), user: 'Jane Manager',  userRole: 'Manager',            module: 'Manager',   action: 'Task Assigned',     description: 'Assigned "Quality Inspection" for Order #902 to Bill Worker.' },
+      { id: 'LOG-003', timestamp: new Date(Date.now() - 1000*60*300).toISOString(), user: 'System Admin',  userRole: 'Admin',              module: 'Admin',     action: 'User Updated',      description: 'Updated permissions for Worker: Bill Worker.' },
+      { id: 'LOG-002', timestamp: new Date(Date.now() - 1000*60*600).toISOString(), user: 'Bill Worker',   userRole: 'Worker',             module: 'Security',  action: 'User Login',        description: 'Successful login from IP: 192.168.1.42.' },
+      { id: 'LOG-001', timestamp: new Date(Date.now() - 1000*60*1440).toISOString(),user: 'System',        userRole: 'System',             module: 'Core',      action: 'System Boot',       description: 'Rug Factory System v2.0 initialized successfully.' }
     ];
-
     for (const l of initialLogs) {
       await db.run(
         'INSERT INTO audit_logs (id, timestamp, user, userRole, module, action, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -345,12 +277,11 @@ export async function initDb() {
   if (appCheck.count === 0) {
     console.log('Seeding approvals table...');
     const initialApprovals = [
-      { id: 'REQ-01', subject: 'New Supplier Registration: Elite Wools', requestedBy: 'Jane Manager', date: '2023-10-24', status: 'Pending', description: 'Requesting approval for a new wool supplier based in New Zealand.' },
-      { id: 'REQ-02', subject: 'Override Production Limit', requestedBy: 'Bill Worker', date: '2023-10-25', status: 'Pending', description: 'Need to override the limit for the current night shift to meet deadline.' },
-      { id: 'REQ-03', subject: 'Budget Extension: Sales Team', requestedBy: 'Mark Sales', date: '2023-10-26', status: 'Approved', description: 'Quarterly budget extension for regional marketing campaign.' },
-      { id: 'REQ-04', subject: 'Emergency Leave Request', requestedBy: 'John Dave', date: '2023-10-27', status: 'Rejected', description: 'Requesting leave for personal reasons during peak production week.' }
+      { id: 'REQ-01', subject: 'New Supplier Registration: Elite Wools', requestedBy: 'Jane Manager', date: '2023-10-24', status: 'Pending',  description: 'Requesting approval for a new wool supplier based in New Zealand.' },
+      { id: 'REQ-02', subject: 'Override Production Limit',              requestedBy: 'Bill Worker',  date: '2023-10-25', status: 'Pending',  description: 'Need to override the limit for the current night shift to meet deadline.' },
+      { id: 'REQ-03', subject: 'Budget Extension: Sales Team',           requestedBy: 'Mark Sales',   date: '2023-10-26', status: 'Approved', description: 'Quarterly budget extension for regional marketing campaign.' },
+      { id: 'REQ-04', subject: 'Emergency Leave Request',                requestedBy: 'John Dave',    date: '2023-10-27', status: 'Rejected', description: 'Requesting leave for personal reasons during peak production week.' }
     ];
-
     for (const app of initialApprovals) {
       await db.run(
         'INSERT INTO approvals (id, subject, requestedBy, date, status, description) VALUES (?, ?, ?, ?, ?, ?)',
@@ -360,5 +291,6 @@ export async function initDb() {
   }
 
   console.log('Database initialized successfully.');
+  console.log(`Database file: ${dbPath}`);
   await db.close();
 }

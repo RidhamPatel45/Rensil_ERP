@@ -15,24 +15,31 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Database initialization
+// ---------------------------------------------------------------------------
+// Database Initialization
+// ---------------------------------------------------------------------------
 try {
   await initDb();
 } catch (error) {
   console.error('Failed to initialize database:', error);
+  process.exit(1);
 }
 
-// Audit helper
+// ---------------------------------------------------------------------------
+// Audit Helper
+// ---------------------------------------------------------------------------
 async function createAuditLog(db, req, module, action, description) {
   const userName = req.headers['x-user-name'] || 'System';
   const userRole = req.headers['x-user-role'] || 'System';
   const id = `LOG-${Math.floor(1000 + Math.random() * 9000)}`;
   const timestamp = new Date().toISOString();
-  
   await db.run(
     'INSERT INTO audit_logs (id, timestamp, user, userRole, module, action, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [id, timestamp, userName, userRole, module, action, description]
@@ -40,35 +47,27 @@ async function createAuditLog(db, req, module, action, description) {
   console.log(`[AUDIT] ${action} by ${userName}`);
 }
 
-// --- API ROUTES ---
+// ---------------------------------------------------------------------------
+// ROUTES
+// ---------------------------------------------------------------------------
 
-// 1. Auth & Users
+// 1. Auth & Users ---------------------------------------------------------
 app.post('/api/users/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) {
+  if (!email || !password)
     return res.status(400).json({ message: 'Email and password are required' });
-  }
 
   const db = await getDb();
   try {
     const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
-    if (!user) {
+    if (!user || !bcrypt.compareSync(password, user.password)) {
       await createAuditLog(db, req, 'Security', 'Failed Login', `Unauthorized attempt using email: ${email}`);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-
-    const passwordMatch = bcrypt.compareSync(password, user.password);
-    if (!passwordMatch) {
-      await createAuditLog(db, req, 'Security', 'Failed Login', `Unauthorized attempt using email: ${email}`);
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
     const { password: _, ...userWithoutPassword } = user;
-    // Set headers manually for audit log creation
     req.headers['x-user-name'] = user.name;
     req.headers['x-user-role'] = user.role;
     await createAuditLog(db, req, 'Security', 'User Login', `User logged in as ${user.role}`);
-    
     res.json(userWithoutPassword);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -106,26 +105,18 @@ app.post('/api/users', async (req, res) => {
   const { name, email, role, password } = req.body;
   const db = await getDb();
   try {
-    const userExists = await db.get('SELECT id FROM users WHERE email = ?', [email]);
-    if (userExists) {
-      return res.status(400).json({ message: 'User with this email already exists' });
-    }
+    const exists = await db.get('SELECT id FROM users WHERE email = ?', [email]);
+    if (exists) return res.status(400).json({ message: 'User with this email already exists' });
 
-    const plainPassword = password || 'password123';
-    const hashedPassword = bcrypt.hashSync(plainPassword, 10);
+    const hashed = bcrypt.hashSync(password || 'password123', 10);
     const id = `USR-${Date.now().toString().slice(-4)}`;
-    const status = 'Active';
     const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
-
     await db.run(
       'INSERT INTO users (id, name, email, role, status, password, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, name, email, role, status, hashedPassword, avatar]
+      [id, name, email, role, 'Active', hashed, avatar]
     );
-
-    const newUser = { id, name, email, role, status, avatar };
     await createAuditLog(db, req, 'Admin', 'User Created', `Added new user ${name} as ${role}`);
-    
-    res.status(201).json(newUser);
+    res.status(201).json({ id, name, email, role, status: 'Active', avatar });
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -139,19 +130,14 @@ app.put('/api/users/:id', async (req, res) => {
   try {
     const user = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // Exclude password and id from simple updates
     const keys = Object.keys(updates).filter(k => k !== 'password' && k !== 'id');
-    const setClause = keys.map(k => `${k} = ?`).join(', ');
-    const values = keys.map(k => updates[k]);
-
-    if (setClause) {
-      await db.run(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, req.params.id]);
+    if (keys.length) {
+      const setClause = keys.map(k => `${k} = ?`).join(', ');
+      await db.run(`UPDATE users SET ${setClause} WHERE id = ?`, [...keys.map(k => updates[k]), req.params.id]);
     }
-
-    const updatedUser = await db.get('SELECT id, name, email, role, status, avatar FROM users WHERE id = ?', [req.params.id]);
-    await createAuditLog(db, req, 'Admin', 'User Updated', `Updated profile/settings for ${updatedUser.name}`);
-    res.json(updatedUser);
+    const updated = await db.get('SELECT id, name, email, role, status, avatar FROM users WHERE id = ?', [req.params.id]);
+    await createAuditLog(db, req, 'Admin', 'User Updated', `Updated profile for ${updated.name}`);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -159,12 +145,11 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-// 2. Audit Logs
+// 2. Audit Logs -----------------------------------------------------------
 app.get('/api/audit-logs', async (req, res) => {
   const db = await getDb();
   try {
-    const logs = await db.all('SELECT * FROM audit_logs ORDER BY timestamp DESC');
-    res.json(logs);
+    res.json(await db.all('SELECT * FROM audit_logs ORDER BY timestamp DESC'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -185,12 +170,11 @@ app.post('/api/audit-logs', async (req, res) => {
   }
 });
 
-// 3. Inventory
+// 3. Inventory ------------------------------------------------------------
 app.get('/api/inventory', async (req, res) => {
   const db = await getDb();
   try {
-    const inventory = await db.all('SELECT * FROM inventory ORDER BY id DESC');
-    res.json(inventory);
+    res.json(await db.all('SELECT * FROM inventory ORDER BY id'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -201,8 +185,7 @@ app.get('/api/inventory', async (req, res) => {
 app.get('/api/inventory/low-stock', async (req, res) => {
   const db = await getDb();
   try {
-    const lowStock = await db.all("SELECT * FROM inventory WHERE status = 'Low Stock' OR status = 'Critical'");
-    res.json(lowStock);
+    res.json(await db.all("SELECT * FROM inventory WHERE status = 'Low Stock' OR status = 'Critical'"));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -213,8 +196,24 @@ app.get('/api/inventory/low-stock', async (req, res) => {
 app.get('/api/inventory/usage-logs', async (req, res) => {
   const db = await getDb();
   try {
-    const logs = await db.all('SELECT * FROM usage_logs ORDER BY date DESC, id DESC');
-    res.json(logs);
+    res.json(await db.all('SELECT * FROM usage_logs ORDER BY date DESC'));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  } finally {
+    await db.close();
+  }
+});
+
+app.post('/api/inventory', async (req, res) => {
+  const item = req.body;
+  const db = await getDb();
+  try {
+    await db.run(
+      'INSERT INTO inventory (id, name, category, quantity, unit, status, lastRestock) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [item.id, item.name, item.category, item.quantity, item.unit, item.status, item.lastRestock]
+    );
+    await createAuditLog(db, req, 'Inventory', 'New Material', `${item.name} added to catalog.`);
+    res.status(201).json(item);
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -226,18 +225,12 @@ app.put('/api/inventory/:id', async (req, res) => {
   const updates = req.body;
   const db = await getDb();
   try {
-    const item = await db.get('SELECT * FROM inventory WHERE id = ?', [req.params.id]);
-    if (!item) return res.status(404).json({ message: 'Inventory item not found' });
-
     const keys = Object.keys(updates).filter(k => k !== 'id');
-    const setClause = keys.map(k => `${k} = ?`).join(', ');
-    const values = keys.map(k => updates[k]);
-
-    if (setClause) {
-      await db.run(`UPDATE inventory SET ${setClause} WHERE id = ?`, [...values, req.params.id]);
+    if (keys.length) {
+      const setClause = keys.map(k => `${k} = ?`).join(', ');
+      await db.run(`UPDATE inventory SET ${setClause} WHERE id = ?`, [...keys.map(k => updates[k]), req.params.id]);
     }
-
-    await createAuditLog(db, req, 'Inventory', 'Stock Update', `Item ${req.params.id} updated with ${JSON.stringify(updates)}`);
+    await createAuditLog(db, req, 'Inventory', 'Stock Update', `Item ${req.params.id} updated.`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -246,33 +239,15 @@ app.put('/api/inventory/:id', async (req, res) => {
   }
 });
 
-app.post('/api/inventory', async (req, res) => {
-  const newItem = req.body;
-  const db = await getDb();
-  try {
-    await db.run(
-      'INSERT INTO inventory (id, name, category, quantity, unit, status, lastRestock) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [newItem.id, newItem.name, newItem.category, newItem.quantity, newItem.unit, newItem.status, newItem.lastRestock]
-    );
-
-    await createAuditLog(db, req, 'Inventory', 'New Material', `${newItem.name} added to catalog.`);
-    res.status(201).json(newItem);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  } finally {
-    await db.close();
-  }
-});
-
 app.post('/api/inventory/usage-logs', async (req, res) => {
-  const newLog = req.body;
+  const log = req.body;
   const db = await getDb();
   try {
     await db.run(
       'INSERT INTO usage_logs (id, materialId, materialName, quantityUsed, unit, taskRef, usedBy, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [newLog.id, newLog.materialId, newLog.materialName, newLog.quantityUsed, newLog.unit, newLog.taskRef, newLog.usedBy, newLog.date]
+      [log.id, log.materialId, log.materialName, log.quantityUsed, log.unit, log.taskRef, log.usedBy, log.date]
     );
-    res.status(201).json(newLog);
+    res.status(201).json(log);
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -280,12 +255,11 @@ app.post('/api/inventory/usage-logs', async (req, res) => {
   }
 });
 
-// 4. Orders
+// 4. Orders ---------------------------------------------------------------
 app.get('/api/orders', async (req, res) => {
   const db = await getDb();
   try {
-    const orders = await db.all('SELECT * FROM orders ORDER BY datePlaced DESC, id DESC');
-    res.json(orders);
+    res.json(await db.all('SELECT * FROM orders ORDER BY datePlaced DESC'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -299,6 +273,23 @@ app.get('/api/orders/:id', async (req, res) => {
     const order = await db.get('SELECT * FROM orders WHERE id = ?', [req.params.id]);
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  } finally {
+    await db.close();
+  }
+});
+
+app.post('/api/orders', async (req, res) => {
+  const o = req.body;
+  const db = await getDb();
+  try {
+    await db.run(
+      'INSERT INTO orders (id, customerName, email, product, datePlaced, amount, status, timelineStep, paymentStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [o.id, o.customerName, o.email, o.product, o.datePlaced, o.amount, o.status, o.timelineStep, o.paymentStatus]
+    );
+    await createAuditLog(db, req, 'Sales', 'Order Created', `New order ${o.id} for ${o.amount} recorded.`);
+    res.status(201).json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -320,30 +311,11 @@ app.put('/api/orders/:id/payment', async (req, res) => {
   }
 });
 
-app.post('/api/orders', async (req, res) => {
-  const order = req.body;
-  const db = await getDb();
-  try {
-    await db.run(
-      'INSERT INTO orders (id, customerName, email, product, datePlaced, amount, status, timelineStep, paymentStatus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [order.id, order.customerName, order.email, order.product, order.datePlaced, order.amount, order.status, order.timelineStep, order.paymentStatus]
-    );
-
-    await createAuditLog(db, req, 'Sales', 'Order Created', `New order ${order.id} for ${order.amount} recorded.`);
-    res.status(201).json({ success: true });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  } finally {
-    await db.close();
-  }
-});
-
-// 5. Products
+// 5. Products -------------------------------------------------------------
 app.get('/api/products', async (req, res) => {
   const db = await getDb();
   try {
-    const products = await db.all('SELECT * FROM products');
-    res.json(products);
+    res.json(await db.all('SELECT * FROM products'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -351,25 +323,23 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 6. Salaries
+// 6. Salaries -------------------------------------------------------------
 app.get('/api/salaries', async (req, res) => {
   const db = await getDb();
   try {
     const salaries = await db.all('SELECT * FROM salaries');
     const users = await db.all('SELECT id, name, email, role FROM users');
-
-    const enriched = salaries.map(salary => {
-      const user = users.find(u => u.id.toString() === salary.userId.toString());
+    const enriched = salaries.map(s => {
+      const u = users.find(u => u.id.toString() === s.userId.toString());
       return {
-        ...salary,
-        userName: user ? user.name : (salary.role || 'Unknown User'),
-        userEmail: user ? user.email : 'N/A',
-        role: user ? user.role : (salary.role || 'Staff'),
-        workDetails: salary.workDetails ? JSON.parse(salary.workDetails) : null,
-        history: salary.history ? JSON.parse(salary.history) : []
+        ...s,
+        userName:  u ? u.name  : (s.role || 'Unknown'),
+        userEmail: u ? u.email : 'N/A',
+        role:      u ? u.role  : (s.role || 'Staff'),
+        workDetails: s.workDetails ? JSON.parse(s.workDetails) : null,
+        history:     s.history     ? JSON.parse(s.history)     : []
       };
     });
-
     res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -381,13 +351,12 @@ app.get('/api/salaries', async (req, res) => {
 app.get('/api/salaries/my/:userId', async (req, res) => {
   const db = await getDb();
   try {
-    const salary = await db.get('SELECT * FROM salaries WHERE userId = ?', [req.params.userId]);
-    if (!salary) return res.json(null);
-    
+    const s = await db.get('SELECT * FROM salaries WHERE userId = ?', [req.params.userId]);
+    if (!s) return res.json(null);
     res.json({
-      ...salary,
-      workDetails: salary.workDetails ? JSON.parse(salary.workDetails) : null,
-      history: salary.history ? JSON.parse(salary.history) : []
+      ...s,
+      workDetails: s.workDetails ? JSON.parse(s.workDetails) : null,
+      history:     s.history     ? JSON.parse(s.history)     : []
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -400,8 +369,8 @@ app.put('/api/salaries/payout/:userId', async (req, res) => {
   const { status } = req.body;
   const db = await getDb();
   try {
-    await db.run("UPDATE salaries SET paymentStatus = ?, lastPaymentDate = ? WHERE userId = ?", [status, new Date().toISOString().split('T')[0], req.params.userId]);
-    console.log(`Updated payout for user ${req.params.userId} to ${status}`);
+    const today = new Date().toISOString().split('T')[0];
+    await db.run('UPDATE salaries SET paymentStatus = ?, lastPaymentDate = ? WHERE userId = ?', [status, today, req.params.userId]);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -410,12 +379,11 @@ app.put('/api/salaries/payout/:userId', async (req, res) => {
   }
 });
 
-// 7. Suppliers
+// 7. Suppliers ------------------------------------------------------------
 app.get('/api/suppliers/purchase-orders', async (req, res) => {
   const db = await getDb();
   try {
-    const orders = await db.all('SELECT * FROM supply_orders ORDER BY dateRequested DESC');
-    res.json(orders);
+    res.json(await db.all('SELECT * FROM supply_orders ORDER BY dateRequested DESC'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -426,8 +394,7 @@ app.get('/api/suppliers/purchase-orders', async (req, res) => {
 app.get('/api/suppliers/shipments', async (req, res) => {
   const db = await getDb();
   try {
-    const shipments = await db.all("SELECT * FROM supply_orders WHERE status = 'Shipped'");
-    res.json(shipments);
+    res.json(await db.all("SELECT * FROM supply_orders WHERE status = 'Shipped'"));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -435,12 +402,11 @@ app.get('/api/suppliers/shipments', async (req, res) => {
   }
 });
 
-// 8. Tasks
+// 8. Tasks ----------------------------------------------------------------
 app.get('/api/tasks', async (req, res) => {
   const db = await getDb();
   try {
-    const tasks = await db.all('SELECT * FROM tasks ORDER BY dueDate ASC');
-    res.json(tasks);
+    res.json(await db.all('SELECT * FROM tasks ORDER BY dueDate ASC'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -448,11 +414,10 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
-app.get('/api/tasks/assignee/:assigneeName', async (req, res) => {
+app.get('/api/tasks/assignee/:name', async (req, res) => {
   const db = await getDb();
   try {
-    const tasks = await db.all('SELECT * FROM tasks WHERE assignedTo = ? ORDER BY dueDate ASC', [req.params.assigneeName]);
-    res.json(tasks);
+    res.json(await db.all('SELECT * FROM tasks WHERE assignedTo = ? ORDER BY dueDate ASC', [req.params.name]));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -487,12 +452,11 @@ app.put('/api/tasks/:id/status', async (req, res) => {
   }
 });
 
-// 9. Approvals
+// 9. Approvals ------------------------------------------------------------
 app.get('/api/approvals', async (req, res) => {
   const db = await getDb();
   try {
-    const approvals = await db.all('SELECT * FROM approvals ORDER BY date DESC, id DESC');
-    res.json(approvals);
+    res.json(await db.all('SELECT * FROM approvals ORDER BY date DESC'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -504,18 +468,14 @@ app.post('/api/approvals', async (req, res) => {
   const { subject, requestedBy, description } = req.body;
   const db = await getDb();
   try {
-    const countRow = await db.get('SELECT count(*) as count FROM approvals');
-    const id = `REQ-${String(countRow.count + 1).padStart(2, '0')}`;
+    const { count } = await db.get('SELECT count(*) as count FROM approvals');
+    const id = `REQ-${String(count + 1).padStart(2, '0')}`;
     const date = new Date().toISOString().split('T')[0];
-    const status = 'Pending';
-
     await db.run(
       'INSERT INTO approvals (id, subject, requestedBy, date, status, description) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, subject, requestedBy, date, status, description]
+      [id, subject, requestedBy, date, 'Pending', description]
     );
-
-    const newApproval = { id, subject, requestedBy, date, status, description };
-    res.status(201).json(newApproval);
+    res.status(201).json({ id, subject, requestedBy, date, status: 'Pending', description });
   } catch (error) {
     res.status(500).json({ message: error.message });
   } finally {
@@ -536,42 +496,32 @@ app.put('/api/approvals/:id', async (req, res) => {
   }
 });
 
-// 10. Reports
+// 10. Reports -------------------------------------------------------------
 app.get('/api/reports/financials', async (req, res) => {
   const db = await getDb();
   try {
     const orders = await db.all('SELECT amount, paymentStatus FROM orders');
-    
-    let totalRevenue = 0;
-    let paidRevenue = 0;
-    let pendingRevenue = 0;
-    
+    let total = 0, paid = 0, pending = 0;
     orders.forEach(o => {
-      const val = parseInt(o.amount.replace(/[^0-9]/g, ''), 10);
-      totalRevenue += val;
-      if (o.paymentStatus === 'Paid') paidRevenue += val;
-      else pendingRevenue += val;
+      const v = parseInt(o.amount.replace(/[^0-9]/g, ''), 10);
+      total += v;
+      if (o.paymentStatus === 'Paid') paid += v; else pending += v;
     });
-
-    const gstCollected = Math.floor(paidRevenue * 0.18);
-    const estimatedCosts = Math.floor(totalRevenue * 0.65); // Simulating 65% COGS
-
-    // Monthly trends (mocked based on values)
-    const trends = [
-      { month: 'Jan', revenue: Math.floor(totalRevenue * 0.8), costs: Math.floor(totalRevenue * 0.5) },
-      { month: 'Feb', revenue: Math.floor(totalRevenue * 0.9), costs: Math.floor(totalRevenue * 0.6) },
-      { month: 'Mar', revenue: totalRevenue, costs: estimatedCosts },
-    ];
-
+    const gst = Math.floor(paid * 0.18);
+    const costs = Math.floor(total * 0.65);
     res.json({
       kpis: {
-        totalRevenue: `₹${totalRevenue.toLocaleString()}`,
-        paidRevenue: `₹${paidRevenue.toLocaleString()}`,
-        pendingRevenue: `₹${pendingRevenue.toLocaleString()}`,
-        gstCollected: `₹${gstCollected.toLocaleString()}`,
+        totalRevenue: `₹${total.toLocaleString()}`,
+        paidRevenue:  `₹${paid.toLocaleString()}`,
+        pendingRevenue: `₹${pending.toLocaleString()}`,
+        gstCollected: `₹${gst.toLocaleString()}`,
         grossMargin: '35%'
       },
-      trends
+      trends: [
+        { month: 'Jan', revenue: Math.floor(total * 0.8), costs: Math.floor(total * 0.5) },
+        { month: 'Feb', revenue: Math.floor(total * 0.9), costs: Math.floor(total * 0.6) },
+        { month: 'Mar', revenue: total, costs }
+      ]
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -584,23 +534,18 @@ app.get('/api/reports/efficiency', async (req, res) => {
   const db = await getDb();
   try {
     const tasks = await db.all('SELECT status, assignedTo FROM tasks');
-    
-    const total = tasks.length;
+    const total     = tasks.length;
     const completed = tasks.filter(t => t.status === 'Done').length;
     const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-    const pending = total - completed - inProgress;
-
-    // Worker performance simulation
-    const workers = ['Bill Worker', 'John Doe', 'Sarah Smith'];
-    const performance = workers.map(w => ({
-       name: w,
-       completed: tasks.filter(t => t.assignedTo === w && t.status === 'Done').length,
-       total: tasks.filter(t => t.assignedTo === w).length
-    }));
-
+    const pending   = total - completed - inProgress;
+    const workers   = ['Bill Worker', 'John Doe', 'Sarah Smith'];
     res.json({
-      summary: { total, completed, inProgress, pending, successRate: `${total > 0 ? Math.floor((completed/total)*100) : 0}%` },
-      performance
+      summary: { total, completed, inProgress, pending, successRate: `${total > 0 ? Math.floor((completed / total) * 100) : 0}%` },
+      performance: workers.map(w => ({
+        name: w,
+        completed: tasks.filter(t => t.assignedTo === w && t.status === 'Done').length,
+        total:     tasks.filter(t => t.assignedTo === w).length
+      }))
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -609,17 +554,11 @@ app.get('/api/reports/efficiency', async (req, res) => {
   }
 });
 
-
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
-
+// ---------------------------------------------------------------------------
 // Start Server
+// ---------------------------------------------------------------------------
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`\n🚀 Rug Factory Backend running on http://localhost:${PORT}`);
+  console.log(`   Environment : ${process.env.NODE_ENV || 'development'}`);
+  console.log(`   Database    : ${process.env.DATABASE_FILE || 'database.sqlite'}\n`);
 });
