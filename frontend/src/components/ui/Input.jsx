@@ -7,7 +7,7 @@ export const Input = React.forwardRef(({ className, type = "text", ...props }, r
     <input
       type={type}
       className={twMerge(clsx(
-        "flex h-10 w-full rounded-md border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400/80 focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all disabled:cursor-not-allowed disabled:opacity-50 duration-200",
         className
       ))}
       ref={ref}

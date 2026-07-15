@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+        mono: ['"Geist Mono"', 'monospace'],
+      },
       colors: {
         primary: {
           50: '#f0f9ff',
